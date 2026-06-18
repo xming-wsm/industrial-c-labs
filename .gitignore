@@ -54,12 +54,11 @@ dkms.conf
 # debug information files
 *.dwo
 
-# CMake build output
+# xmake build output
 build/
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
+.xmake/
 compile_commands.json
+Testing/
 
 # OS
 .DS_Store

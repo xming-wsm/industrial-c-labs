@@ -112,15 +112,14 @@ ht_status_t ht_remove(hash_table_t *ht, const char *key);
 ## 6. 构建与测试
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build -R lab04_hash_table --output-on-failure
+xmake lab4          # 编译
+xmake lab4 test     # 编译并运行测试
 ```
 
 直接看明细：
 
 ```bash
-./build/labs/lab04_hash_table/test_lab04_hash_table
+xmake run test_lab04_hash_table
 ```
 
 全部实现后应看到 `==== summary: 10 run, 0 failed ====`。
@@ -138,7 +137,7 @@ ctest --test-dir build -R lab04_hash_table --output-on-failure
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`）；
+- `xmake lab4 test` 通过（`0 failed`）；
 - 没有使用 `malloc/free`；
 - 编译无 `-Wall -Wextra` 告警。
 

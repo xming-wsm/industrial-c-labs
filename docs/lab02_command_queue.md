@@ -108,18 +108,17 @@ cq->head = (cq->head == 0) ? (cq->capacity - 1) : (cq->head - 1);
 ## 6. 构建与测试
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build -R lab02_command_queue --output-on-failure
+xmake lab2          # 编译
+xmake lab2 test     # 编译并运行测试
 ```
 
 直接看明细：
 
 ```bash
-./build/labs/lab02_command_queue/test_lab02_command_queue
+xmake run test_lab02_command_queue
 ```
 
-全部实现后应看到 `==== summary: 11 run, 0 failed ====`，CTest 显示 `100% tests passed` 即过关。
+全部实现后应看到 `==== summary: 11 run, 0 failed ====` 即过关。
 
 ---
 
@@ -134,7 +133,7 @@ ctest --test-dir build -R lab02_command_queue --output-on-failure
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`）；
+- `xmake lab2 test` 通过（`0 failed`）；
 - 没有使用 `malloc/free`；
 - 编译无 `-Wall -Wextra` 告警。
 

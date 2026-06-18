@@ -120,15 +120,14 @@ ssize_t  udp_recvfrom(int fd, void *buf, size_t len);
 ## 6. 构建与测试
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build -R lab09_socket_comm --output-on-failure
+xmake lab9          # 编译
+xmake lab9 test     # 编译并运行测试
 ```
 
 直接看明细：
 
 ```bash
-./build/labs/lab09_socket_comm/test_lab09_socket_comm
+xmake run test_lab09_socket_comm
 ```
 
 全部实现后应看到 `==== summary: 4 run, 0 failed ====`。
@@ -148,7 +147,7 @@ ctest --test-dir build -R lab09_socket_comm --output-on-failure
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`）；
+- `xmake lab9 test` 通过（`0 failed`）；
 - `send_all` / `recv_all` 正确处理部分收发（大数据用例通过）；
 - 无 fd 泄漏；编译无 `-Wall -Wextra` 告警。
 

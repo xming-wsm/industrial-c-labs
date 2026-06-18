@@ -27,7 +27,7 @@
 1. 解释环形缓冲区的 head/tail 游标与“环绕（wrap-around）”原理；
 2. 用“显式 count 计数”法正确判定满 / 空；
 3. 写出对 NULL 参数安全、不依赖动态内存的工业级 C 接口；
-4. 用 CMake + CTest 跑通一套单元测试，理解“实现 → 测试 → 过关”的开发闭环。
+4. 用 xmake 跑通一套单元测试，理解“实现 → 测试 → 过关”的开发闭环。
 
 ---
 
@@ -111,21 +111,14 @@ if (++rb->head == rb->capacity) rb->head = 0;
 在项目根目录执行：
 
 ```bash
-cmake -S . -B build           # 首次配置（生成 build/）
-cmake --build build           # 编译
-ctest --test-dir build --output-on-failure   # 运行测试
-```
-
-只跑本关测试：
-
-```bash
-ctest --test-dir build -R lab01_ring_buffer --output-on-failure
+xmake lab1          # 编译
+xmake lab1 test     # 编译并运行测试
 ```
 
 也可以直接运行测试可执行文件，看每个用例的明细：
 
 ```bash
-./build/labs/lab01_ring_buffer/test_lab01_ring_buffer
+xmake run test_lab01_ring_buffer
 ```
 
 **未实现时**应当看到大量 `FAIL`（这是正常的起点）；逐步实现后失败数会减少，最终：
@@ -134,7 +127,7 @@ ctest --test-dir build -R lab01_ring_buffer --output-on-failure
 ==== summary: 12 run, 0 failed ====
 ```
 
-CTest 显示 `100% tests passed` 即过关。
+看到 `==== summary: 12 run, 0 failed ====` 即过关。
 
 ---
 
@@ -151,7 +144,7 @@ CTest 显示 `100% tests passed` 即过关。
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`）；
+- `xmake lab1 test` 通过（`0 failed`）；
 - 没有使用 `malloc/free`；
 - 编译无 `-Wall -Wextra` 告警。
 

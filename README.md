@@ -15,7 +15,8 @@
 
 ```text
 industrial-c-labs/
-├── CMakeLists.txt            # 顶层：project + enable_testing + 逐关解锁
+├── xmake.lua                 # 顶层：xmake 构建 + lab1~11 任务
+├── xmake/labs.lua            # 各关 target 与 labN / labN test 任务
 ├── README.md                 # 本文件
 ├── docs/
 │   ├── ROADMAP.md            # 全部 lab 路线图（教学大纲）
@@ -24,7 +25,6 @@ industrial-c-labs/
 │   └── test_framework.h      # 极简单元测试框架（header-only，零依赖）
 └── labs/
     └── lab01_ring_buffer/
-        ├── CMakeLists.txt
         ├── include/ring_buffer.h    # API 声明（已写好，只读）
         ├── src/ring_buffer.c        # 实现桩（← 你在这里写）
         └── test/test_ring_buffer.c  # 测试（不要改）
@@ -35,40 +35,52 @@ industrial-c-labs/
 ## 环境要求
 
 - Ubuntu / Linux
-- `gcc`、`cmake`（>= 3.16）、`make`
+- `gcc`、`xmake`
 
 如果还没装：
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential cmake
+sudo apt install -y build-essential
+curl -fsSL https://xmake.io/shget.text | bash
 ```
 
 ---
 
 ## 构建与测试
 
+每一关独立编译，无需解锁：
+
 ```bash
-# 1. 配置（首次或改了 CMakeLists 后执行，生成 build/ 目录）
-cmake -S . -B build
+# 编译 Lab 1（库 + 测试程序）
+xmake lab1
 
-# 2. 编译
-cmake --build build
+# 编译并运行 Lab 1 测试
+xmake lab1 test
 
-# 3. 跑所有测试
-ctest --test-dir build --output-on-failure
+# Lab 2~11 同理
+xmake lab2
+xmake lab2 test
+# ...
+xmake lab11 test
 ```
 
-只跑某一关：
+首次运行会自动配置；改了 `xmake.lua` 后可重新配置：
 
 ```bash
-ctest --test-dir build -R lab01_ring_buffer --output-on-failure
+xmake f -c
 ```
 
-直接运行某关测试可执行文件看明细：
+直接运行某关测试可执行文件（看更详细的断言输出）：
 
 ```bash
-./build/labs/lab01_ring_buffer/test_lab01_ring_buffer
+xmake run test_lab01_ring_buffer
+```
+
+生成 `compile_commands.json`（供 clangd 索引）：
+
+```bash
+xmake project -k compile_commands
 ```
 
 ---
@@ -77,7 +89,7 @@ ctest --test-dir build -R lab01_ring_buffer --output-on-failure
 
 1. 读对应的实验指导书（`docs/labNN_*.md`）。
 2. 打开 `labs/labNN_*/src/*.c`，把每个 `TODO` 实现掉。
-3. 编译并跑测试，看到 `100% tests passed` 即过关。
+3. 编译并跑测试，看到 `==== summary: N run, 0 failed ====` 即过关。
 4. 反馈过关，解锁下一关。
 
 > 刚拿到项目时，Lab 1 的测试是**全部失败**的——这是正常的起点，因为实现桩还没填。
@@ -88,7 +100,7 @@ ctest --test-dir build -R lab01_ring_buffer --output-on-failure
 
 - **Lab 1：环形缓冲区** ← 从这里开始，见 [docs/lab01_ring_buffer.md](docs/lab01_ring_buffer.md)
 
-Track A/B/C（Lab 1~11）的指导书与脚手架（头文件接口 + 实现桩 + 测试 + CMake）**均已就绪**，按解锁顺序逐关推进即可：
+Track A/B/C（Lab 1~11）的指导书与脚手架（头文件接口 + 实现桩 + 测试）**均已就绪**，按顺序逐关推进即可：
 
 | 关 | 指导书 |
 | --- | --- |
@@ -103,4 +115,4 @@ Track A/B/C（Lab 1~11）的指导书与脚手架（头文件接口 + 实现桩 
 | Lab 10 协议帧解析 + CRC | [docs/lab10_frame_parser.md](docs/lab10_frame_parser.md) |
 | Lab 11 Modbus TCP 从站 | [docs/lab11_modbus_tcp.md](docs/lab11_modbus_tcp.md) |
 
-> 每关默认在顶层 `CMakeLists.txt` 中处于注释（未解锁）状态，过一关就取消下一行 `add_subdirectory(...)` 注释来解锁下一关，保持"实现 → 测试 → 解锁"的闭环。STM32H7 嵌入式（Lab 12~16）见路线图，会在搭好工具链后单独提供。
+> STM32H7 嵌入式（Lab 12~16）见路线图，会在搭好工具链后单独提供。

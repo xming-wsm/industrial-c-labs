@@ -125,15 +125,14 @@ int mb_process(modbus_slave_t *mb, const uint8_t *req, size_t req_len,
 ## 6. 构建与测试
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build -R lab11_modbus_tcp --output-on-failure
+xmake lab11          # 编译
+xmake lab11 test     # 编译并运行测试
 ```
 
 直接看明细：
 
 ```bash
-./build/labs/lab11_modbus_tcp/test_lab11_modbus_tcp
+xmake run test_lab11_modbus_tcp
 ```
 
 全部实现后应看到 `==== summary: 8 run, 0 failed ====`。
@@ -153,7 +152,7 @@ ctest --test-dir build -R lab11_modbus_tcp --output-on-failure
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`）；
+- `xmake lab11 test` 通过（`0 failed`）；
 - 读/写/异常/畸形报文都按规范处理；
 - 字节序正确；编译无 `-Wall -Wextra` 告警。
 

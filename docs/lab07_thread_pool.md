@@ -124,15 +124,14 @@ size_t      tp_pending(thread_pool_t *tp);
 ## 6. 构建与测试
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build -R lab07_thread_pool --output-on-failure
+xmake lab7          # 编译
+xmake lab7 test     # 编译并运行测试
 ```
 
 直接看明细：
 
 ```bash
-./build/labs/lab07_thread_pool/test_lab07_thread_pool
+xmake run test_lab07_thread_pool
 ```
 
 全部实现后应看到 `==== summary: 4 run, 0 failed ====`。
@@ -152,7 +151,7 @@ ctest --test-dir build -R lab07_thread_pool --output-on-failure
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`），测试在数秒内结束（不卡死）；
+- `xmake lab7 test` 通过（`0 failed`），测试在数秒内结束（不卡死）；
 - 工作线程执行任务时不持锁；
 - 关闭流程不丢任务、不泄漏线程（join 完整）；
 - 编译无 `-Wall -Wextra` 告警。

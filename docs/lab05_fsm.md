@@ -110,15 +110,14 @@ fsm_status_t fsm_dispatch(fsm_t *fsm, int event);
 ## 6. 构建与测试
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build -R lab05_fsm --output-on-failure
+xmake lab5          # 编译
+xmake lab5 test     # 编译并运行测试
 ```
 
 直接看明细：
 
 ```bash
-./build/labs/lab05_fsm/test_lab05_fsm
+xmake run test_lab05_fsm
 ```
 
 全部实现后应看到 `==== summary: 6 run, 0 failed ====`。
@@ -136,7 +135,7 @@ ctest --test-dir build -R lab05_fsm --output-on-failure
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`）；
+- `xmake lab5 test` 通过（`0 failed`）；
 - 没有使用 `malloc/free`；
 - 编译无 `-Wall -Wextra` 告警。
 

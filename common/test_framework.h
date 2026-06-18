@@ -7,7 +7,7 @@
  *   - 一个测试用例 = 一个返回 int 的函数（0 = 通过，非 0 = 失败）；
  *   - 失败时打印文件:行号 + 表达式，定位问题；
  *   - main 里用 RUN_TEST(fn) 注册并执行，整体失败则进程返回非 0，
- *     CTest 据此判定 PASS / FAIL。
+ *     `xmake labN test` 据此判定 PASS / FAIL。
  *
  * 用法：
  *   #include "test_framework.h"

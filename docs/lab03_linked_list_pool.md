@@ -114,15 +114,14 @@ ll_status_t al_remove(alarm_list_t *al, uint16_t code);
 ## 6. 构建与测试
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build -R lab03_linked_list_pool --output-on-failure
+xmake lab3          # 编译
+xmake lab3 test     # 编译并运行测试
 ```
 
 直接看明细：
 
 ```bash
-./build/labs/lab03_linked_list_pool/test_lab03_linked_list_pool
+xmake run test_lab03_linked_list_pool
 ```
 
 全部实现后应看到 `==== summary: 10 run, 0 failed ====`。
@@ -140,7 +139,7 @@ ctest --test-dir build -R lab03_linked_list_pool --output-on-failure
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`）；
+- `xmake lab3 test` 通过（`0 failed`）；
 - 没有使用 `malloc/free`；
 - `alloc` / `free` 为 O(1)；
 - 编译无 `-Wall -Wextra` 告警。

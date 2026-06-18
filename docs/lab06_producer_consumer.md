@@ -114,15 +114,14 @@ size_t      sb_count(sync_buffer_t *sb);
 ## 6. 构建与测试
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build -R lab06_producer_consumer --output-on-failure
+xmake lab6          # 编译
+xmake lab6 test     # 编译并运行测试
 ```
 
 直接看明细：
 
 ```bash
-./build/labs/lab06_producer_consumer/test_lab06_producer_consumer
+xmake run test_lab06_producer_consumer
 ```
 
 全部实现后应看到 `==== summary: 4 run, 0 failed ====`。
@@ -142,7 +141,7 @@ ctest --test-dir build -R lab06_producer_consumer --output-on-failure
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`），且测试能在 1~2 秒内结束（不卡死）；
+- `xmake lab6 test` 通过（`0 failed`），且测试能在 1~2 秒内结束（不卡死）；
 - 阻塞用条件变量实现，无忙等；
 - 编译无 `-Wall -Wextra` 告警。
 

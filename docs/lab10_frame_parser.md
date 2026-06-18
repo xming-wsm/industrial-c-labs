@@ -118,15 +118,14 @@ int      fp_build(uint8_t *out, size_t out_cap, const uint8_t *payload, uint8_t 
 ## 6. 构建与测试
 
 ```bash
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build -R lab10_frame_parser --output-on-failure
+xmake lab10          # 编译
+xmake lab10 test     # 编译并运行测试
 ```
 
 直接看明细：
 
 ```bash
-./build/labs/lab10_frame_parser/test_lab10_frame_parser
+xmake run test_lab10_frame_parser
 ```
 
 全部实现后应看到 `==== summary: 8 run, 0 failed ====`。
@@ -144,7 +143,7 @@ ctest --test-dir build -R lab10_frame_parser --output-on-failure
 
 ## 8. 过关标准
 
-- `ctest` 全绿（`100% tests passed`）；
+- `xmake lab10 test` 通过（`0 failed`）；
 - 分包 / 粘包 / 坏帧场景都正确；
 - 编译无 `-Wall -Wextra` 告警。
 
