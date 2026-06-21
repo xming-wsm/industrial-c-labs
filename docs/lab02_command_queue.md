@@ -44,12 +44,14 @@
                 head ------> 队尾在 (head+count-1)%cap
 ```
 
-| 操作 | 做什么 | 游标变化 |
-| --- | --- | --- |
-| `push_back` | 写到 `(head+count)%cap` | `count++` |
-| `push_front` | `head` 后退环绕后写入新 head | `head = (head==0)?cap-1:head-1`，`count++` |
-| `pop_front` | 读 `head` | `head=(head+1)%cap`，`count--` |
-| `pop_back` | 读 `(head+count-1)%cap` | `count--`（head 不变） |
+
+| 操作           | 做什么                    | 游标变化                                      |
+| ------------ | ---------------------- | ----------------------------------------- |
+| `push_back`  | 写到 `(head+count)%cap`  | `count++`                                 |
+| `push_front` | `head` 后退环绕后写入新 head   | `head = (head==0)?cap-1:head-1`，`count++` |
+| `pop_front`  | 读 `head`               | `head=(head+1)%cap`，`count--`             |
+| `pop_back`   | 读 `(head+count-1)%cap` | `count--`（head 不变）                        |
+
 
 判空 / 判满与 Lab 1 一致：`count == 0` 为空，`count == capacity` 为满。
 
@@ -92,7 +94,7 @@ cq_status_t cq_back(const command_queue_t *cq, cmd_t *out);
 
 ## 5. 推荐实现步骤
 
-1. 先写 `cq_init` / `cq_reset` 和四个查询函数，跑测试看 `test_init_*` 变绿。
+1. 先写 `cq_init` / `cq_reset` 和四个查询函数，跑测试看 `test_init_`* 变绿。
 2. 写 `cq_push_back` / `cq_pop_front`，让 FIFO 用例通过。
 3. 写 `cq_push_front` / `cq_pop_back`，重点测试插队与撤销用例。
 4. 写 `cq_front` / `cq_back`（peek），最后跑环绕用例 `test_wrap_mixed`。
