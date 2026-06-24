@@ -79,13 +79,17 @@ return FSM_NO_TRANSITION;   /* 没有匹配规则：忽略事件，状态不变 
 - 你要实现的源文件：[labs/lab05_fsm/src/fsm.c](../labs/lab05_fsm/src/fsm.c)
 - 测试（**不要改**）：[labs/lab05_fsm/test/test_fsm.c](../labs/lab05_fsm/test/test_fsm.c)
 
-需要实现的 API（只有三个函数，重点全在 `fsm_dispatch`）：
+需要实现的 API（重点全在 `fsm_dispatch`，其余多为查询/复位的轻量接口）：
 
 ```c
 fsm_status_t fsm_init(fsm_t *fsm, const fsm_transition_t *table, size_t table_len,
                       int initial, void *ctx);
 int          fsm_state(const fsm_t *fsm);
+fsm_status_t fsm_reset(fsm_t *fsm, int initial);          /* 回到初始态并清零计数 */
 fsm_status_t fsm_dispatch(fsm_t *fsm, int event);
+bool         fsm_can_dispatch(const fsm_t *fsm, int event);            /* 是否存在转移 */
+fsm_status_t fsm_peek_next(const fsm_t *fsm, int event, int *out_next);/* 预览目标态，不跳转 */
+size_t       fsm_transition_count(const fsm_t *fsm);     /* 累计成功转移次数 */
 ```
 
 测试文件里已经替你定义好了**注塑周期的转移表**（顺序流程 + 任意工作态急停 + 故障复位）。你只需把引擎实现正确，它就能驱动这张表。
@@ -95,7 +99,8 @@ fsm_status_t fsm_dispatch(fsm_t *fsm, int event);
 1. 不使用 `malloc/free`，转移表由调用者提供（const 静态数组）；
 2. 所有函数对 NULL 参数安全（`fsm_state(NULL)` 返回 -1）；
 3. `dispatch` 未命中时状态保持不变并返回 `FSM_NO_TRANSITION`；
-4. 命中且 `action` 非 NULL 时必须调用 `action(ctx)`。
+4. 命中且 `action` 非 NULL 时必须调用 `action(ctx)`，并把 `transitions` 计数 +1；
+5. `fsm_peek_next` / `fsm_can_dispatch` 只查表，**不改变状态、不触发动作、不计数**；`fsm_reset` 把状态置为 `initial` 并将计数清零。
 
 ---
 
@@ -120,7 +125,7 @@ xmake lab5 test     # 编译并运行测试
 xmake run test_lab05_fsm
 ```
 
-全部实现后应看到 `==== summary: 6 run, 0 failed ====`。
+全部实现后应看到 `==== summary: 8 run, 0 failed ====`。
 
 ---
 

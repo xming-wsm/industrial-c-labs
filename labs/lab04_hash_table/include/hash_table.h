@@ -94,6 +94,12 @@ size_t ht_count(const hash_table_t *ht);
 /** @return 节点池容量；ht 为 NULL 时返回 0。 */
 size_t ht_capacity(const hash_table_t *ht);
 
+/** @return 节点池中仍可分配的空闲条目数（capacity - count）；ht 为 NULL 时返回 0。 */
+size_t ht_available(const hash_table_t *ht);
+
+/** 遍历所有条目时的访问回调。遍历顺序不做保证（取决于桶分布）。 */
+typedef void (*ht_visit_fn)(const char *key, uint16_t value, void *ctx);
+
 /**
  * 插入或更新：键已存在则更新其 value；不存在则新增。
  * @return HT_OK；ht/key 为 NULL -> HT_ERR_NULL；
@@ -109,10 +115,23 @@ ht_status_t ht_put(hash_table_t *ht, const char *key, uint16_t value);
 ht_status_t ht_get(const hash_table_t *ht, const char *key, uint16_t *out_value);
 
 /**
+ * 查找键，命中返回其值，否则返回调用者给定的默认值。
+ * 适合"读配置项，缺省用默认"的场景。
+ * @return 命中时为存储值；未找到或 ht/key 为 NULL 时返回 def。
+ */
+uint16_t ht_get_or_default(const hash_table_t *ht, const char *key, uint16_t def);
+
+/**
  * 删除键。
  * @return HT_OK；HT_ERR_NULL（ht/key 为 NULL）；HT_ERR_NOT_FOUND。
  */
 ht_status_t ht_remove(hash_table_t *ht, const char *key);
+
+/**
+ * 遍历表中所有 键->值 条目，对每条调用 fn(key, value, ctx)。
+ * ht / fn 为 NULL 时安全返回（什么也不做）。
+ */
+void ht_for_each(const hash_table_t *ht, ht_visit_fn fn, void *ctx);
 
 #ifdef __cplusplus
 }

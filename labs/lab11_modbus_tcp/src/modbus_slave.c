@@ -27,6 +27,21 @@ int mb_get_register(const modbus_slave_t *mb, uint16_t addr, uint16_t *out) {
     return -1;
 }
 
+size_t mb_register_count(const modbus_slave_t *mb) {
+    (void)mb;
+    return 0;
+}
+
+uint32_t mb_request_count(const modbus_slave_t *mb) {
+    (void)mb;
+    return 0;
+}
+
+uint32_t mb_exception_count(const modbus_slave_t *mb) {
+    (void)mb;
+    return 0;
+}
+
 int mb_process(modbus_slave_t *mb,
                const uint8_t *req, size_t req_len,
                uint8_t *resp, size_t resp_cap) {

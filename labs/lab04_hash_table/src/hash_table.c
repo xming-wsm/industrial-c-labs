@@ -37,6 +37,11 @@ size_t ht_capacity(const hash_table_t *ht) {
     return 0;
 }
 
+size_t ht_available(const hash_table_t *ht) {
+    (void)ht;
+    return 0;
+}
+
 ht_status_t ht_put(hash_table_t *ht, const char *key, uint16_t value) {
     (void)ht;
     (void)key;
@@ -51,8 +56,20 @@ ht_status_t ht_get(const hash_table_t *ht, const char *key, uint16_t *out_value)
     return HT_ERR_NULL;
 }
 
+uint16_t ht_get_or_default(const hash_table_t *ht, const char *key, uint16_t def) {
+    (void)ht;
+    (void)key;
+    return def;
+}
+
 ht_status_t ht_remove(hash_table_t *ht, const char *key) {
     (void)ht;
     (void)key;
     return HT_ERR_NULL;
+}
+
+void ht_for_each(const hash_table_t *ht, ht_visit_fn fn, void *ctx) {
+    (void)ht;
+    (void)fn;
+    (void)ctx;
 }

@@ -85,8 +85,11 @@ sb_status_t sb_init(sync_buffer_t *sb, uint8_t *storage, size_t size);
 void        sb_destroy(sync_buffer_t *sb);
 sb_status_t sb_put(sync_buffer_t *sb, uint8_t byte);   /* 满则阻塞 */
 sb_status_t sb_get(sync_buffer_t *sb, uint8_t *out);   /* 空则阻塞 */
+sb_status_t sb_try_put(sync_buffer_t *sb, uint8_t byte);/* 满则立即返回 SB_FULL */
+sb_status_t sb_try_get(sync_buffer_t *sb, uint8_t *out);/* 空则立即返回 SB_EMPTY */
 void        sb_close(sync_buffer_t *sb);
 size_t      sb_count(sync_buffer_t *sb);
+size_t      sb_capacity(const sync_buffer_t *sb);
 ```
 
 **约束**：
@@ -94,9 +97,10 @@ size_t      sb_count(sync_buffer_t *sb);
 1. 阻塞必须用条件变量，**禁止忙等**（不要 `while(full){}` 空转）；
 2. 醒来后用 `while` 重判条件，正确处理虚假唤醒；
 3. 关闭后：`sb_put` 立即返回 `SB_CLOSED`；`sb_get` 取完残留数据后才返回 `SB_CLOSED`；
-4. 对 NULL 参数安全。
+4. `sb_try_put` / `sb_try_get` **绝不阻塞**：满返回 `SB_FULL`、空返回 `SB_EMPTY`、已关闭返回 `SB_CLOSED`；
+5. 对 NULL 参数安全。
 
-测试会启动一个生产者线程写入 2000 字节、一个消费者线程读取，并用**只有 4 字节**的缓冲强制触发满/空阻塞，最后校验数据条数与顺序。
+测试除单生产者/单消费者外，还有 **3 生产者 + 3 消费者** 的守恒性用例（小缓冲反复阻塞，校验取走总数 == 写入总数），以及非阻塞 try_* 的满/空/关闭路径。
 
 ---
 
@@ -124,7 +128,7 @@ xmake lab6 test     # 编译并运行测试
 xmake run test_lab06_producer_consumer
 ```
 
-全部实现后应看到 `==== summary: 4 run, 0 failed ====`。
+全部实现后应看到 `==== summary: 7 run, 0 failed ====`。
 
 > 若测试**卡住不返回**，多半是漏了某处 `signal`/`broadcast`，或用了 `if` 导致线程错过唤醒后永久阻塞——重点检查 close 路径。
 

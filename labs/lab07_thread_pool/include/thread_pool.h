@@ -36,7 +36,8 @@ typedef enum {
     TP_OK = 0,          /**< 成功                       */
     TP_ERR_NULL,        /**< 传入了 NULL 指针           */
     TP_ERR_ARG,         /**< 参数非法（线程数/队列容量为 0） */
-    TP_ERR_SHUTDOWN     /**< 线程池已关闭，拒绝新任务   */
+    TP_ERR_SHUTDOWN,    /**< 线程池已关闭，拒绝新任务   */
+    TP_ERR_FULL         /**< 非阻塞提交：队列当前已满（try_submit） */
 } tp_status_t;
 
 /** 任务函数：池里的工作线程会以 fn(arg) 的形式执行它。 */
@@ -86,6 +87,13 @@ tp_status_t tp_init(thread_pool_t *tp,
 tp_status_t tp_submit(thread_pool_t *tp, tp_task_fn fn, void *arg);
 
 /**
+ * 非阻塞提交：队列满时不等待，立即返回 TP_ERR_FULL。
+ * @return TP_OK；TP_ERR_FULL（队列已满）；tp/fn 为 NULL -> TP_ERR_NULL；
+ *         已关闭 -> TP_ERR_SHUTDOWN。
+ */
+tp_status_t tp_try_submit(thread_pool_t *tp, tp_task_fn fn, void *arg);
+
+/**
  * 优雅关闭：把队列里已有任务全部执行完，再 join 所有工作线程，
  * 并销毁内部的 mutex / cond。返回后线程池不可再用。
  * tp 为 NULL 时安全返回。
@@ -94,6 +102,12 @@ void tp_shutdown(thread_pool_t *tp);
 
 /** @return 队列中当前待执行的任务数（加锁读取）；tp 为 NULL 时返回 0。 */
 size_t tp_pending(thread_pool_t *tp);
+
+/** @return 工作线程数；tp 为 NULL 时返回 0。 */
+size_t tp_worker_count(const thread_pool_t *tp);
+
+/** @return 任务队列容量；tp 为 NULL 时返回 0。 */
+size_t tp_capacity(const thread_pool_t *tp);
 
 #ifdef __cplusplus
 }

@@ -83,6 +83,12 @@ size_t al_capacity(const alarm_list_t *al);
 /** @return 池是否耗尽（used == capacity）；al 为 NULL 时返回 false。 */
 bool al_is_full(const alarm_list_t *al);
 
+/** @return 池中仍可分配的空闲节点数（capacity - used）；al 为 NULL 时返回 0。 */
+size_t al_available(const alarm_list_t *al);
+
+/** 遍历业务链表时的访问回调：按链表顺序对每个节点调用一次。 */
+typedef void (*al_visit_fn)(uint16_t code, int32_t value, void *ctx);
+
 /* ---- 内存池底层（O(1) 自由链表） ---- */
 
 /**
@@ -114,10 +120,29 @@ ll_status_t al_add(alarm_list_t *al, uint16_t code, int32_t value);
 bool al_find(const alarm_list_t *al, uint16_t code, int32_t *out_value);
 
 /**
+ * 更新"第一个"匹配该报警码节点的 value（不新增节点）。
+ * 适用于同一报警以新实测值重新触发的场景。
+ * @return LL_OK；LL_ERR_NULL（al 为 NULL）；LL_ERR_NOT_FOUND（无此码）。
+ */
+ll_status_t al_update(alarm_list_t *al, uint16_t code, int32_t value);
+
+/**
  * 移除"第一个"匹配该报警码的节点，并把节点还回池。
  * @return LL_OK；LL_ERR_NULL（al 为 NULL）；LL_ERR_NOT_FOUND（无此码）。
  */
 ll_status_t al_remove(alarm_list_t *al, uint16_t code);
+
+/**
+ * 移除"所有"匹配该报警码的节点，全部还回池。
+ * @return 实际移除的节点数；al 为 NULL 时返回 0（无匹配也返回 0）。
+ */
+size_t al_remove_all(alarm_list_t *al, uint16_t code);
+
+/**
+ * 按业务链表顺序遍历所有报警，对每个节点调用 fn(code, value, ctx)。
+ * al / fn 为 NULL 时安全返回（什么也不做）。
+ */
+void al_for_each(const alarm_list_t *al, al_visit_fn fn, void *ctx);
 
 #ifdef __cplusplus
 }

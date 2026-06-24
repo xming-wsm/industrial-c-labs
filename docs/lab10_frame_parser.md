@@ -87,22 +87,24 @@ stateDiagram-v2
 需要实现的 API：
 
 ```c
-uint16_t crc16_modbus(const uint8_t *data, size_t len);
-int      fp_init(frame_parser_t *fp, fp_frame_cb cb, void *ctx);
-void     fp_reset(frame_parser_t *fp);
-size_t   fp_feed(frame_parser_t *fp, const uint8_t *data, size_t len);
-uint32_t fp_good_count(const frame_parser_t *fp);
-uint32_t fp_crc_error_count(const frame_parser_t *fp);
-uint32_t fp_frame_error_count(const frame_parser_t *fp);
-int      fp_build(uint8_t *out, size_t out_cap, const uint8_t *payload, uint8_t len);
+uint16_t   crc16_modbus(const uint8_t *data, size_t len);
+int        fp_init(frame_parser_t *fp, fp_frame_cb cb, void *ctx);
+void       fp_reset(frame_parser_t *fp);
+fp_state_t fp_state(const frame_parser_t *fp);   /* 当前状态机所处状态 */
+size_t     fp_feed(frame_parser_t *fp, const uint8_t *data, size_t len);
+uint32_t   fp_good_count(const frame_parser_t *fp);
+uint32_t   fp_crc_error_count(const frame_parser_t *fp);
+uint32_t   fp_frame_error_count(const frame_parser_t *fp);
+int        fp_build(uint8_t *out, size_t out_cap, const uint8_t *payload, uint8_t len);
 ```
 
 **约束**：
 
 1. 解析器逐字节驱动，必须正确处理分包 / 粘包 / 前导垃圾；
 2. 坏帧（CRC 错、LEN 超限、ETX 不符）只计数、不交付，且不能卡死，要能继续解析后续帧；
-3. `fp_build` 与解析互逆：build 出来的帧喂给 feed 必须能解析出来；
-4. 对 NULL 参数安全。
+3. `fp_build` 与解析互逆：build 出来的帧喂给 feed 必须能解析出来（含满负载 `FP_MAX_PAYLOAD` 与零负载帧）；
+4. `fp_state` 返回当前状态机位置（初始 / 复位后为 `FP_WAIT_STX`）；
+5. 对 NULL 参数安全。
 
 ---
 
@@ -128,7 +130,7 @@ xmake lab10 test     # 编译并运行测试
 xmake run test_lab10_frame_parser
 ```
 
-全部实现后应看到 `==== summary: 8 run, 0 failed ====`。
+全部实现后应看到 `==== summary: 12 run, 0 failed ====`。
 
 ---
 

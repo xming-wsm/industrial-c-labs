@@ -23,6 +23,11 @@ void fp_reset(frame_parser_t *fp) {
     (void)fp;
 }
 
+fp_state_t fp_state(const frame_parser_t *fp) {
+    (void)fp;
+    return FP_WAIT_STX;
+}
+
 size_t fp_feed(frame_parser_t *fp, const uint8_t *data, size_t len) {
     (void)fp;
     (void)data;

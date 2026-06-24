@@ -22,8 +22,32 @@ int fsm_state(const fsm_t *fsm) {
     return -1;
 }
 
+fsm_status_t fsm_reset(fsm_t *fsm, int initial) {
+    (void)fsm;
+    (void)initial;
+    return FSM_ERR_NULL;
+}
+
 fsm_status_t fsm_dispatch(fsm_t *fsm, int event) {
     (void)fsm;
     (void)event;
     return FSM_ERR_NULL;
+}
+
+bool fsm_can_dispatch(const fsm_t *fsm, int event) {
+    (void)fsm;
+    (void)event;
+    return false;
+}
+
+fsm_status_t fsm_peek_next(const fsm_t *fsm, int event, int *out_next) {
+    (void)fsm;
+    (void)event;
+    (void)out_next;
+    return FSM_ERR_NULL;
+}
+
+size_t fsm_transition_count(const fsm_t *fsm) {
+    (void)fsm;
+    return 0;
 }

@@ -24,11 +24,28 @@ tp_status_t tp_submit(thread_pool_t *tp, tp_task_fn fn, void *arg) {
     return TP_ERR_NULL;
 }
 
+tp_status_t tp_try_submit(thread_pool_t *tp, tp_task_fn fn, void *arg) {
+    (void)tp;
+    (void)fn;
+    (void)arg;
+    return TP_ERR_NULL;
+}
+
 void tp_shutdown(thread_pool_t *tp) {
     (void)tp;
 }
 
 size_t tp_pending(thread_pool_t *tp) {
+    (void)tp;
+    return 0;
+}
+
+size_t tp_worker_count(const thread_pool_t *tp) {
+    (void)tp;
+    return 0;
+}
+
+size_t tp_capacity(const thread_pool_t *tp) {
     (void)tp;
     return 0;
 }

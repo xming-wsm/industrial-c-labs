@@ -18,12 +18,19 @@ static int test_init_null(void) {
     ASSERT_EQ_INT(SCH_ERR_NULL, sch_init(&s, slots, 0));
     ASSERT_EQ_INT(0, (int)sch_now(NULL));
     ASSERT_EQ_SIZE(0u, sch_active_count(NULL));
+    ASSERT_EQ_SIZE(0u, sch_capacity(NULL));
     ASSERT_EQ_INT(-1, sch_add(NULL, task_inc, &dummy, 1, 1));
     ASSERT_EQ_INT(SCH_ERR_NULL, sch_remove(NULL, 0));
     ASSERT_EQ_SIZE(0u, sch_tick(NULL));
+    ASSERT_EQ_SIZE(0u, sch_advance(NULL, 5));
+    ASSERT_FALSE(sch_is_active(NULL, 0));
+    sch_reset(NULL);
 
     sch_init(&s, slots, 4);
     ASSERT_EQ_INT(-1, sch_add(&s, NULL, &dummy, 1, 1)); /* fn 为 NULL */
+    ASSERT_EQ_SIZE(4u, sch_capacity(&s));
+    ASSERT_FALSE(sch_is_active(&s, -1));                /* id 越界 */
+    ASSERT_FALSE(sch_is_active(&s, 100));
     return 0;
 }
 
@@ -84,6 +91,67 @@ static int test_two_tasks(void) {
     return 0;
 }
 
+/* ---- sch_advance：批量推进等价于多次 tick ---- */
+
+static int test_advance(void) {
+    sch_task_t slots[4];
+    scheduler_t s;
+    sch_init(&s, slots, 4);
+
+    int a = 0;
+    sch_add(&s, task_inc, &a, 2, 2);   /* tick 2,4,6,8,10 */
+    size_t fired = sch_advance(&s, 10);
+    ASSERT_EQ_INT(5, a);
+    ASSERT_EQ_SIZE(5u, fired);
+    ASSERT_EQ_INT(10, (int)sch_now(&s));
+    /* advance 0 不应触发任何任务、不推进时钟 */
+    ASSERT_EQ_SIZE(0u, sch_advance(&s, 0));
+    ASSERT_EQ_INT(10, (int)sch_now(&s));
+    return 0;
+}
+
+/* ---- sch_is_active：跟随 add / remove / 一次性失效 ---- */
+
+static int test_is_active(void) {
+    sch_task_t slots[4];
+    scheduler_t s;
+    sch_init(&s, slots, 4);
+
+    int a = 0;
+    int id = sch_add(&s, task_inc, &a, 0, 2);   /* 一次性，tick 2 */
+    ASSERT_TRUE(sch_is_active(&s, id));
+    sch_advance(&s, 2);
+    ASSERT_EQ_INT(1, a);
+    ASSERT_FALSE(sch_is_active(&s, id));         /* 触发后失效 */
+    return 0;
+}
+
+/* ---- sch_reset：清空任务并归零时钟 ---- */
+
+static int test_reset(void) {
+    sch_task_t slots[4];
+    scheduler_t s;
+    sch_init(&s, slots, 4);
+
+    int a = 0;
+    sch_add(&s, task_inc, &a, 1, 1);
+    sch_advance(&s, 5);
+    ASSERT_EQ_INT(5, a);
+    ASSERT_TRUE(sch_now(&s) == 5);
+
+    sch_reset(&s);
+    ASSERT_EQ_SIZE(0u, sch_active_count(&s));
+    ASSERT_EQ_INT(0, (int)sch_now(&s));          /* 时钟归零 */
+
+    /* reset 后还能正常用 */
+    int b = 0;
+    int id = sch_add(&s, task_inc, &b, 1, 1);
+    ASSERT_TRUE(id >= 0);
+    sch_advance(&s, 3);
+    ASSERT_EQ_INT(3, b);
+    return 0;
+}
+
 static int test_remove(void) {
     sch_task_t slots[4];
     scheduler_t s;
@@ -127,6 +195,9 @@ int main(void) {
     RUN_TEST(test_periodic_single);
     RUN_TEST(test_one_shot);
     RUN_TEST(test_two_tasks);
+    RUN_TEST(test_advance);
+    RUN_TEST(test_is_active);
+    RUN_TEST(test_reset);
     RUN_TEST(test_remove);
     RUN_TEST(test_full_and_reuse);
     TEST_END();

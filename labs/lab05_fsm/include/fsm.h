@@ -63,6 +63,7 @@ typedef struct {
     size_t                  table_len;  /**< 转移表行数                 */
     int                     state;      /**< 当前状态编号               */
     void                   *ctx;        /**< 传给 action 的用户上下文   */
+    size_t                  transitions;/**< 成功转移累计次数（统计用） */
 } fsm_t;
 
 /**
@@ -83,13 +84,37 @@ fsm_status_t fsm_init(fsm_t *fsm,
 int fsm_state(const fsm_t *fsm);
 
 /**
+ * 把状态机重置到指定初始状态（保留已绑定的转移表与 ctx），
+ * 同时把转移计数清零。常用于一轮生产结束后复用同一实例。
+ * @return FSM_OK；fsm 为 NULL -> FSM_ERR_NULL。
+ */
+fsm_status_t fsm_reset(fsm_t *fsm, int initial);
+
+/**
  * 派发一个事件：在转移表里查找 (当前状态, event) 匹配的行。
- *   - 命中：切换到目标状态，若 action 非 NULL 则调用 action(ctx)，返回 FSM_OK。
+ *   - 命中：切换到目标状态，若 action 非 NULL 则调用 action(ctx)，
+ *           转移计数 +1，返回 FSM_OK。
  *   - 未命中：状态不变，返回 FSM_NO_TRANSITION。
  *
  * @return FSM_OK / FSM_NO_TRANSITION；fsm 为 NULL -> FSM_ERR_NULL。
  */
 fsm_status_t fsm_dispatch(fsm_t *fsm, int event);
+
+/**
+ * 查询当前状态下该事件是否存在可用转移（不改变状态、不触发动作）。
+ * @return true 存在转移；false 不存在（或 fsm 为 NULL）。
+ */
+bool fsm_can_dispatch(const fsm_t *fsm, int event);
+
+/**
+ * 预览：若在当前状态派发 event，会跳到哪个状态（不真正跳转、不触发动作）。
+ * @param out_next 命中时写入目标状态编号（可为 NULL）。
+ * @return FSM_OK 命中；FSM_NO_TRANSITION 无转移；fsm 为 NULL -> FSM_ERR_NULL。
+ */
+fsm_status_t fsm_peek_next(const fsm_t *fsm, int event, int *out_next);
+
+/** @return 自 init/reset 以来成功转移的累计次数；fsm 为 NULL 时返回 0。 */
+size_t fsm_transition_count(const fsm_t *fsm);
 
 #ifdef __cplusplus
 }

@@ -82,6 +82,9 @@ int fp_init(frame_parser_t *fp, fp_frame_cb cb, void *ctx);
 /** 复位状态机与计数器（保留 cb/ctx）。fp 为 NULL 时安全返回。 */
 void fp_reset(frame_parser_t *fp);
 
+/** @return 当前字节流状态机所处状态；fp 为 NULL 时返回 FP_WAIT_STX。 */
+fp_state_t fp_state(const frame_parser_t *fp);
+
 /**
  * 喂入一段字节流，逐字节驱动状态机。
  * 每解析出一帧校验通过的帧，就调用一次 cb，并累加 good_frames。

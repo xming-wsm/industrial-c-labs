@@ -71,10 +71,14 @@ for (每个 active 任务 t) {
 sch_status_t sch_init(scheduler_t *sch, sch_task_t *storage, size_t capacity);
 uint32_t     sch_now(const scheduler_t *sch);
 size_t       sch_active_count(const scheduler_t *sch);
+size_t       sch_capacity(const scheduler_t *sch);
+void         sch_reset(scheduler_t *sch);                  /* 清空任务并归零时钟 */
+bool         sch_is_active(const scheduler_t *sch, int id);/* 槽是否在用 */
 int          sch_add(scheduler_t *sch, sch_task_fn fn, void *arg,
                      uint32_t period, uint32_t first_delay);
 sch_status_t sch_remove(scheduler_t *sch, int id);
 size_t       sch_tick(scheduler_t *sch);   /* 返回本 tick 触发的任务数 */
+size_t       sch_advance(scheduler_t *sch, uint32_t ticks); /* 连续推进多个 tick */
 ```
 
 **约束**：
@@ -82,7 +86,8 @@ size_t       sch_tick(scheduler_t *sch);   /* 返回本 tick 触发的任务数 
 1. 不使用 `malloc/free`，任务槽数组由 `sch_init` 传入；
 2. 所有函数对 NULL 参数安全；
 3. `period==0` 表示一次性任务，触发后自动失效；
-4. `sch_tick` 返回本次触发的任务数（多个任务可在同一 tick 一起到期）。
+4. `sch_tick` 返回本次触发的任务数（多个任务可在同一 tick 一起到期）；
+5. `sch_advance(sch, n)` 等价于连续调用 `sch_tick` n 次（`n==0` 不推进、不触发）；`sch_reset` 清空所有任务并把时钟归零。
 
 ---
 
@@ -107,7 +112,7 @@ xmake lab8 test     # 编译并运行测试
 xmake run test_lab08_scheduler
 ```
 
-全部实现后应看到 `==== summary: 6 run, 0 failed ====`。
+全部实现后应看到 `==== summary: 9 run, 0 failed ====`。
 
 ---
 

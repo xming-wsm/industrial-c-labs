@@ -90,21 +90,25 @@ int      tcp_listen(uint16_t port, int backlog);
 int      tcp_accept(int listen_fd);
 int      tcp_connect(const char *host, uint16_t port);
 uint16_t sock_local_port(int fd);
+uint16_t sock_peer_port(int fd);                       /* 对端端口 getpeername */
 ssize_t  sock_send_all(int fd, const void *buf, size_t len);
 ssize_t  sock_recv_all(int fd, void *buf, size_t len);
 void     sock_close(int fd);
 int      udp_socket(uint16_t port);
 ssize_t  udp_sendto(int fd, const char *host, uint16_t port, const void *buf, size_t len);
 ssize_t  udp_recvfrom(int fd, void *buf, size_t len);
+ssize_t  udp_recvfrom_from(int fd, void *buf, size_t len,                /* 回填发送方地址 */
+                          char *out_host, size_t host_cap, uint16_t *out_port);
 ```
 
 **约束**：
 
 1. `send_all` / `recv_all` 必须循环处理部分收发；
 2. 出错统一返回 -1（端口类返回 0）；失败时不要泄漏已打开的 fd；
-3. 全部用 IPv4 + `127.0.0.1` 即可（测试只用回环）。
+3. 全部用 IPv4 + `127.0.0.1` 即可（测试只用回环）；
+4. `sock_peer_port` 用 `getpeername` 读对端端口；`udp_recvfrom_from` 用 `recvfrom` 的源地址参数回填发送方 IP/端口（`out_host`/`out_port` 均可为 NULL）。
 
-测试会在子线程起一个 echo / drain 服务端，并传输多达 20 万字节来逼出"部分收发"。
+测试除 echo / drain（多达 20 万字节逼出"部分收发"）外，还有单监听 fd 顺序服务多个客户端、UDP 应答回环（接收端拿到发送方地址再回发）的用例。
 
 ---
 
@@ -130,7 +134,7 @@ xmake lab9 test     # 编译并运行测试
 xmake run test_lab09_socket_comm
 ```
 
-全部实现后应看到 `==== summary: 4 run, 0 failed ====`。
+全部实现后应看到 `==== summary: 6 run, 0 failed ====`。
 
 > 提示：若进程收到 `SIGPIPE` 而退出，是因为往已关闭的连接写数据。可在 send 时加 `MSG_NOSIGNAL` 标志，或忽略 `SIGPIPE`。本关测试不会触发它，但工业代码要注意。
 

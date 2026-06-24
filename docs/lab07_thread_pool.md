@@ -92,9 +92,12 @@ static void *worker_main(void *arg) {
 ```c
 tp_status_t tp_init(thread_pool_t *tp, pthread_t *worker_storage, size_t nworkers,
                     tp_task_t *queue_storage, size_t qcap);
-tp_status_t tp_submit(thread_pool_t *tp, tp_task_fn fn, void *arg);
+tp_status_t tp_submit(thread_pool_t *tp, tp_task_fn fn, void *arg);     /* 满则阻塞 */
+tp_status_t tp_try_submit(thread_pool_t *tp, tp_task_fn fn, void *arg); /* 满则返回 TP_ERR_FULL */
 void        tp_shutdown(thread_pool_t *tp);
 size_t      tp_pending(thread_pool_t *tp);
+size_t      tp_worker_count(const thread_pool_t *tp);
+size_t      tp_capacity(const thread_pool_t *tp);
 ```
 
 你需要自己写一个 `static void *worker_main(void *arg)` 作为线程入口。
@@ -105,9 +108,10 @@ size_t      tp_pending(thread_pool_t *tp);
 2. 队列满时 `tp_submit` 阻塞（背压），不丢任务；
 3. 工作线程执行任务时**不得持锁**；
 4. `tp_shutdown` 必须把已入队任务跑完再退出，且 join 所有线程；
-5. 关闭后 `tp_submit` 返回 `TP_ERR_SHUTDOWN`（在加锁前就用 `tp->shutdown` 挡掉，避免操作已销毁的锁）。
+5. 关闭后 `tp_submit` / `tp_try_submit` 返回 `TP_ERR_SHUTDOWN`（在加锁前就用 `tp->shutdown` 挡掉，避免操作已销毁的锁）；
+6. `tp_try_submit` 队列满时**立即返回 `TP_ERR_FULL`**，不阻塞。
 
-测试会提交多达 5000 个任务、队列却只有 8 格，以此逼出 submit 阻塞，并校验"任务一个不少、一个不多"地全部执行。
+测试会提交多达 5000 个任务、队列却只有 8 格，以此逼出 submit 阻塞，并校验"任务一个不少、一个不多"地全部执行；另有用"闸门任务"占住唯一 worker、填满队列后验证 `tp_try_submit` 返回 `TP_ERR_FULL` 的用例。
 
 ---
 
@@ -134,7 +138,7 @@ xmake lab7 test     # 编译并运行测试
 xmake run test_lab07_thread_pool
 ```
 
-全部实现后应看到 `==== summary: 4 run, 0 failed ====`。
+全部实现后应看到 `==== summary: 6 run, 0 failed ====`。
 
 > 若计数对不上：多半是某条出队/入队路径漏了 `signal`，或工作线程退出条件写错导致提前退出、漏跑任务。
 

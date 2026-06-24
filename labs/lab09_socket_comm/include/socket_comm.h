@@ -61,6 +61,12 @@ int tcp_connect(const char *host, uint16_t port);
 uint16_t sock_local_port(int fd);
 
 /**
+ * 读取已连接 fd 的对端端口（getpeername）。
+ * @return 对端端口号（主机字节序）；出错或未连接返回 0。
+ */
+uint16_t sock_peer_port(int fd);
+
+/**
  * 发送恰好 len 字节（处理部分发送，循环直到发完）。
  * @return 实际发送的字节数（成功时等于 len）；出错返回 -1。
  */
@@ -96,6 +102,16 @@ ssize_t udp_sendto(int fd, const char *host, uint16_t port,
  * @return 收到的字节数；出错返回 -1。
  */
 ssize_t udp_recvfrom(int fd, void *buf, size_t len);
+
+/**
+ * 接收一个 UDP 数据报，并回填发送方地址（用于实现 UDP 应答 / echo）。
+ * @param out_host  发送方 IP 字符串写入处（可为 NULL）。
+ * @param host_cap  out_host 缓冲区容量（含结尾 '\0'）。
+ * @param out_port  发送方端口（主机字节序）写入处（可为 NULL）。
+ * @return 收到的字节数；出错返回 -1。
+ */
+ssize_t udp_recvfrom_from(int fd, void *buf, size_t len,
+                          char *out_host, size_t host_cap, uint16_t *out_port);
 
 #ifdef __cplusplus
 }

@@ -84,12 +84,16 @@ ll_status_t al_init(alarm_list_t *al, ll_node_t *storage, size_t capacity);
 void        al_reset(alarm_list_t *al);
 size_t      al_count(const alarm_list_t *al);
 size_t      al_capacity(const alarm_list_t *al);
+size_t      al_available(const alarm_list_t *al);     /* 剩余空闲槽位 */
 bool        al_is_full(const alarm_list_t *al);
 ll_node_t  *al_node_alloc(alarm_list_t *al);          /* 内存池底层 */
 void        al_node_free(alarm_list_t *al, ll_node_t *node);
 ll_status_t al_add(alarm_list_t *al, uint16_t code, int32_t value);
 bool        al_find(const alarm_list_t *al, uint16_t code, int32_t *out_value);
+ll_status_t al_update(alarm_list_t *al, uint16_t code, int32_t value); /* 更新首个匹配 */
 ll_status_t al_remove(alarm_list_t *al, uint16_t code);
+size_t      al_remove_all(alarm_list_t *al, uint16_t code);  /* 删除全部匹配，返回数量 */
+void        al_for_each(const alarm_list_t *al, al_visit_fn fn, void *ctx); /* 按序遍历 */
 ```
 
 **约束**：
@@ -97,7 +101,8 @@ ll_status_t al_remove(alarm_list_t *al, uint16_t code);
 1. 不使用 `malloc/free`，节点数组由 `al_init` 传入；
 2. 所有函数对 NULL 参数安全；
 3. `al_node_alloc` / `al_node_free` 必须是 O(1)（自由链表，不要遍历）；
-4. `al_add` 把新报警追加到**链表尾部**（保持插入顺序）；`al_remove` 只删**第一个**匹配项。
+4. `al_add` 把新报警追加到**链表尾部**（保持插入顺序）；`al_remove` / `al_update` 只作用于**第一个**匹配项，`al_remove_all` 作用于全部匹配项；
+5. `al_for_each` 按业务链表顺序回调；`al_available` == `al_capacity - al_count`。
 
 ---
 
@@ -124,7 +129,7 @@ xmake lab3 test     # 编译并运行测试
 xmake run test_lab03_linked_list_pool
 ```
 
-全部实现后应看到 `==== summary: 10 run, 0 failed ====`。
+全部实现后应看到 `==== summary: 15 run, 0 failed ====`。
 
 ---
 

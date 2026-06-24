@@ -17,10 +17,51 @@ static int test_init_null(void) {
     ASSERT_EQ_INT(SB_ERR_NULL, sb_init(&sb, NULL, sizeof(storage)));
     ASSERT_EQ_INT(SB_ERR_SIZE, sb_init(&sb, storage, 0));
     ASSERT_EQ_SIZE(0u, sb_count(NULL));
+    ASSERT_EQ_SIZE(0u, sb_capacity(NULL));
     ASSERT_EQ_INT(SB_ERR_NULL, sb_put(NULL, 1));
     ASSERT_EQ_INT(SB_ERR_NULL, sb_get(NULL, NULL));
+    ASSERT_EQ_INT(SB_ERR_NULL, sb_try_put(NULL, 1));
+    ASSERT_EQ_INT(SB_ERR_NULL, sb_try_get(NULL, NULL));
     sb_close(NULL);
     sb_destroy(NULL);
+    return 0;
+}
+
+static int test_capacity(void) {
+    uint8_t storage[16];
+    sync_buffer_t sb;
+    ASSERT_EQ_INT(SB_OK, sb_init(&sb, storage, sizeof(storage)));
+    ASSERT_EQ_SIZE(16u, sb_capacity(&sb));
+    ASSERT_EQ_SIZE(0u, sb_count(&sb));
+    sb_destroy(&sb);
+    return 0;
+}
+
+/* ---- 非阻塞 try_put / try_get ---- */
+
+static int test_try_put_get(void) {
+    uint8_t storage[2];
+    sync_buffer_t sb;
+    sb_init(&sb, storage, sizeof(storage));
+
+    /* 空时 try_get 返回 EMPTY，不阻塞 */
+    ASSERT_EQ_INT(SB_EMPTY, sb_try_get(&sb, NULL));
+
+    ASSERT_EQ_INT(SB_OK, sb_try_put(&sb, 1));
+    ASSERT_EQ_INT(SB_OK, sb_try_put(&sb, 2));
+    /* 满时 try_put 返回 FULL，不阻塞 */
+    ASSERT_EQ_INT(SB_FULL, sb_try_put(&sb, 3));
+
+    uint8_t v = 0;
+    ASSERT_EQ_INT(SB_OK, sb_try_get(&sb, &v)); ASSERT_EQ_INT(1, v);
+    ASSERT_EQ_INT(SB_OK, sb_try_get(&sb, &v)); ASSERT_EQ_INT(2, v);
+    ASSERT_EQ_INT(SB_EMPTY, sb_try_get(&sb, &v));
+
+    /* 关闭后 try_put 返回 CLOSED，空时 try_get 返回 CLOSED */
+    sb_close(&sb);
+    ASSERT_EQ_INT(SB_CLOSED, sb_try_put(&sb, 9));
+    ASSERT_EQ_INT(SB_CLOSED, sb_try_get(&sb, &v));
+    sb_destroy(&sb);
     return 0;
 }
 
@@ -115,11 +156,75 @@ static int test_spsc_blocking(void) {
     return 0;
 }
 
+/* ---- 多生产者 / 多消费者：守恒性（取走总数 == 写入总数） ---- */
+
+#define MPMC_PRODUCERS 3
+#define MPMC_CONSUMERS 3
+#define MPMC_PER_PROD  1000u
+
+static void *mpmc_producer(void *p) {
+    sync_buffer_t *sb = (sync_buffer_t *)p;
+    for (unsigned i = 0; i < MPMC_PER_PROD; i++) {
+        if (sb_put(sb, (uint8_t)(i & 0xFF)) != SB_OK) break;
+    }
+    return NULL;
+}
+
+static void *mpmc_consumer(void *p) {
+    consumer_arg_t *arg = (consumer_arg_t *)p;
+    arg->ok = 1;
+    arg->got = 0;
+    uint8_t v = 0;
+    for (;;) {
+        sb_status_t st = sb_get(arg->sb, &v);
+        if (st == SB_CLOSED) break;
+        if (st != SB_OK) { arg->ok = 0; break; }
+        arg->got++;
+    }
+    return NULL;
+}
+
+static int test_mpmc_conservation(void) {
+    uint8_t storage[8];   /* 小缓冲，逼出反复阻塞 */
+    sync_buffer_t sb;
+    sb_init(&sb, storage, sizeof(storage));
+
+    pthread_t prod[MPMC_PRODUCERS];
+    pthread_t cons[MPMC_CONSUMERS];
+    consumer_arg_t cargs[MPMC_CONSUMERS];
+
+    for (int i = 0; i < MPMC_CONSUMERS; i++) {
+        cargs[i].sb = &sb;
+        ASSERT_EQ_INT(0, pthread_create(&cons[i], NULL, mpmc_consumer, &cargs[i]));
+    }
+    for (int i = 0; i < MPMC_PRODUCERS; i++) {
+        ASSERT_EQ_INT(0, pthread_create(&prod[i], NULL, mpmc_producer, &sb));
+    }
+    /* 先等所有生产者写完，再统一关闭，唤醒消费者退出 */
+    for (int i = 0; i < MPMC_PRODUCERS; i++) pthread_join(prod[i], NULL);
+    sb_close(&sb);
+    for (int i = 0; i < MPMC_CONSUMERS; i++) pthread_join(cons[i], NULL);
+
+    size_t total = 0;
+    for (int i = 0; i < MPMC_CONSUMERS; i++) {
+        ASSERT_TRUE(cargs[i].ok == 1);
+        total += cargs[i].got;
+    }
+    /* 取走的总字节数 == 所有生产者写入的总数（无丢失、无重复） */
+    ASSERT_EQ_SIZE((size_t)MPMC_PRODUCERS * MPMC_PER_PROD, total);
+
+    sb_destroy(&sb);
+    return 0;
+}
+
 int main(void) {
     TEST_BEGIN();
     RUN_TEST(test_init_null);
+    RUN_TEST(test_capacity);
     RUN_TEST(test_single_thread_put_get);
+    RUN_TEST(test_try_put_get);
     RUN_TEST(test_close_then_get_drains);
     RUN_TEST(test_spsc_blocking);
+    RUN_TEST(test_mpmc_conservation);
     TEST_END();
 }

@@ -76,6 +76,18 @@ uint32_t sch_now(const scheduler_t *sch);
 /** @return 当前在用（active）的任务数；sch 为 NULL 时返回 0。 */
 size_t sch_active_count(const scheduler_t *sch);
 
+/** @return 任务槽总数；sch 为 NULL 时返回 0。 */
+size_t sch_capacity(const scheduler_t *sch);
+
+/**
+ * 清空所有任务并把逻辑时钟归零（保留已绑定的任务槽数组）。
+ * sch 为 NULL 时安全返回。
+ */
+void sch_reset(scheduler_t *sch);
+
+/** @return 指定 id 的任务槽是否在用；sch 为 NULL 或 id 越界时返回 false。 */
+bool sch_is_active(const scheduler_t *sch, int id);
+
 /**
  * 注册一个周期任务。
  *
@@ -103,6 +115,12 @@ sch_status_t sch_remove(scheduler_t *sch, int id);
  * @return 本 tick 实际触发的任务数；sch 为 NULL 时返回 0。
  */
 size_t sch_tick(scheduler_t *sch);
+
+/**
+ * 连续推进 ticks 个 tick（等价于调用 sch_tick() ticks 次）。
+ * @return 这段时间内累计触发的任务总数；sch 为 NULL 时返回 0。
+ */
+size_t sch_advance(scheduler_t *sch, uint32_t ticks);
 
 #ifdef __cplusplus
 }

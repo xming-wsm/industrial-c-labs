@@ -29,11 +29,28 @@ sb_status_t sb_get(sync_buffer_t *sb, uint8_t *out) {
     return SB_ERR_NULL;
 }
 
+sb_status_t sb_try_put(sync_buffer_t *sb, uint8_t byte) {
+    (void)sb;
+    (void)byte;
+    return SB_ERR_NULL;
+}
+
+sb_status_t sb_try_get(sync_buffer_t *sb, uint8_t *out) {
+    (void)sb;
+    (void)out;
+    return SB_ERR_NULL;
+}
+
 void sb_close(sync_buffer_t *sb) {
     (void)sb;
 }
 
 size_t sb_count(sync_buffer_t *sb) {
+    (void)sb;
+    return 0;
+}
+
+size_t sb_capacity(const sync_buffer_t *sb) {
     (void)sb;
     return 0;
 }

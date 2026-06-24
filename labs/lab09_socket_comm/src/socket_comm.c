@@ -28,6 +28,11 @@ uint16_t sock_local_port(int fd) {
     return 0;
 }
 
+uint16_t sock_peer_port(int fd) {
+    (void)fd;
+    return 0;
+}
+
 ssize_t sock_send_all(int fd, const void *buf, size_t len) {
     (void)fd;
     (void)buf;
@@ -65,5 +70,16 @@ ssize_t udp_recvfrom(int fd, void *buf, size_t len) {
     (void)fd;
     (void)buf;
     (void)len;
+    return -1;
+}
+
+ssize_t udp_recvfrom_from(int fd, void *buf, size_t len,
+                          char *out_host, size_t host_cap, uint16_t *out_port) {
+    (void)fd;
+    (void)buf;
+    (void)len;
+    (void)out_host;
+    (void)host_cap;
+    (void)out_port;
     return -1;
 }

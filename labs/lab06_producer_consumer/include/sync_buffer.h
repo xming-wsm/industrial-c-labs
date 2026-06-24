@@ -38,7 +38,9 @@ typedef enum {
     SB_OK = 0,      /**< 成功                         */
     SB_ERR_NULL,    /**< 传入了 NULL 指针             */
     SB_ERR_SIZE,    /**< 容量非法（size==0）         */
-    SB_CLOSED       /**< 缓冲区已关闭（且无数据可取） */
+    SB_CLOSED,      /**< 缓冲区已关闭（且无数据可取） */
+    SB_FULL,        /**< 非阻塞写：当前已满（try_put） */
+    SB_EMPTY        /**< 非阻塞读：当前为空（try_get） */
 } sb_status_t;
 
 /**
@@ -87,6 +89,19 @@ sb_status_t sb_put(sync_buffer_t *sb, uint8_t byte);
 sb_status_t sb_get(sync_buffer_t *sb, uint8_t *out);
 
 /**
+ * 非阻塞写：满时不等待，立即返回 SB_FULL。
+ * @return SB_OK 成功；SB_FULL（当前已满）；SB_CLOSED（已关闭）；SB_ERR_NULL。
+ */
+sb_status_t sb_try_put(sync_buffer_t *sb, uint8_t byte);
+
+/**
+ * 非阻塞读：空时不等待，立即返回 SB_EMPTY（未关闭）或 SB_CLOSED（已关闭且空）。
+ * @param out 读出的字节写入 *out（out 可为 NULL 表示丢弃）。
+ * @return SB_OK；SB_EMPTY（暂无数据）；SB_CLOSED（已关闭且无数据）；SB_ERR_NULL。
+ */
+sb_status_t sb_try_get(sync_buffer_t *sb, uint8_t *out);
+
+/**
  * 关闭缓冲区：唤醒所有阻塞的生产者/消费者。
  * 关闭后 sb_put 立即返回 SB_CLOSED；sb_get 仍可取走残留数据，取完返回 SB_CLOSED。
  * sb 为 NULL 时安全返回。
@@ -95,6 +110,9 @@ void sb_close(sync_buffer_t *sb);
 
 /** @return 当前字节数（加锁读取）；sb 为 NULL 时返回 0。 */
 size_t sb_count(sync_buffer_t *sb);
+
+/** @return 容量（字节）；sb 为 NULL 时返回 0。 */
+size_t sb_capacity(const sync_buffer_t *sb);
 
 #ifdef __cplusplus
 }

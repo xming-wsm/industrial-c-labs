@@ -85,17 +85,21 @@ ht_status_t ht_init(hash_table_t *ht, ht_entry_t **buckets, size_t nbuckets,
 void        ht_reset(hash_table_t *ht);
 size_t      ht_count(const hash_table_t *ht);
 size_t      ht_capacity(const hash_table_t *ht);
+size_t      ht_available(const hash_table_t *ht);     /* 剩余空闲节点 */
 ht_status_t ht_put(hash_table_t *ht, const char *key, uint16_t value);
 ht_status_t ht_get(const hash_table_t *ht, const char *key, uint16_t *out_value);
+uint16_t    ht_get_or_default(const hash_table_t *ht, const char *key, uint16_t def);
 ht_status_t ht_remove(hash_table_t *ht, const char *key);
+void        ht_for_each(const hash_table_t *ht, ht_visit_fn fn, void *ctx); /* 遍历全部条目 */
 ```
 
 **约束**：
 
 1. 不使用 `malloc/free`：桶数组与节点池都由 `ht_init` 传入；
 2. 所有函数对 NULL 参数安全；
-3. 键比较用 `strncmp`/`strcmp`，键写入用定长安全拷贝（保证 `'\0'`）；
-4. `ht_put` 同键时更新 value，`count` 不变。
+3. 键比较用 `strncmp`/`strcmp`，键写入用定长安全拷贝（保证 `'\0'`，超长键截断到 `HT_KEY_MAX-1`）；
+4. `ht_put` 同键时更新 value，`count` 不变；
+5. `ht_get_or_default` 未命中（或 NULL）返回传入的默认值；`ht_for_each` 遍历到每条恰好一次（顺序不保证）。
 
 ---
 
@@ -122,7 +126,7 @@ xmake lab4 test     # 编译并运行测试
 xmake run test_lab04_hash_table
 ```
 
-全部实现后应看到 `==== summary: 10 run, 0 failed ====`。
+全部实现后应看到 `==== summary: 15 run, 0 failed ====`。
 
 ---
 

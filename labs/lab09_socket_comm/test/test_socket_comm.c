@@ -64,6 +64,60 @@ static int test_tcp_echo(void) {
     return 0;
 }
 
+/* ---- TCP：单监听 fd 顺序服务多个客户端 + 对端端口校验 ---- */
+
+typedef struct {
+    int    listen_fd;
+    int    nclients;
+    int    ok;
+    uint16_t listen_port;
+} multi_arg_t;
+
+static void *tcp_multi_server(void *p) {
+    multi_arg_t *arg = (multi_arg_t *)p;
+    arg->ok = 1;
+    for (int i = 0; i < arg->nclients; i++) {
+        int cfd = tcp_accept(arg->listen_fd);
+        if (cfd < 0) { arg->ok = 0; break; }
+        char buf[32] = {0};
+        ssize_t n = sock_recv_all(cfd, buf, 4);   /* 每个客户端发 4 字节 */
+        if (n != 4) arg->ok = 0;
+        if (sock_send_all(cfd, buf, 4) != 4) arg->ok = 0;
+        sock_close(cfd);
+    }
+    return NULL;
+}
+
+static int test_tcp_multi_client(void) {
+    int lfd = tcp_listen(0, 4);
+    ASSERT_TRUE(lfd >= 0);
+    uint16_t port = sock_local_port(lfd);
+    ASSERT_TRUE(port != 0);
+
+    multi_arg_t arg = { lfd, 3, 0, port };
+    pthread_t srv;
+    ASSERT_EQ_INT(0, pthread_create(&srv, NULL, tcp_multi_server, &arg));
+
+    for (int i = 0; i < 3; i++) {
+        int cfd = tcp_connect("127.0.0.1", port);
+        ASSERT_TRUE(cfd >= 0);
+        /* 客户端看到的对端端口应等于服务端监听端口 */
+        ASSERT_EQ_INT((int)port, (int)sock_peer_port(cfd));
+
+        char msg[4] = { 'P', 'I', 'N', (char)('0' + i) };
+        char reply[4] = {0};
+        ASSERT_EQ_INT(4, (int)sock_send_all(cfd, msg, 4));
+        ASSERT_EQ_INT(4, (int)sock_recv_all(cfd, reply, 4));
+        ASSERT_EQ_MEM(msg, reply, 4);
+        sock_close(cfd);
+    }
+
+    pthread_join(srv, NULL);
+    sock_close(lfd);
+    ASSERT_TRUE(arg.ok == 1);
+    return 0;
+}
+
 /* ---- 大数据量：验证 send_all/recv_all 正确处理"部分收发" ---- */
 
 #define BIG_LEN 200000u
@@ -143,6 +197,42 @@ static int test_udp_sendrecv(void) {
     return 0;
 }
 
+/* ---- UDP 应答（echo）：接收端用 recvfrom_from 拿到发送方地址再回发 ---- */
+
+static int test_udp_echo(void) {
+    int srv = udp_socket(0);    /* echo 服务端 */
+    ASSERT_TRUE(srv >= 0);
+    uint16_t srv_port = sock_local_port(srv);
+    ASSERT_TRUE(srv_port != 0);
+
+    int cli = udp_socket(0);    /* 客户端（绑定固定端口便于回发） */
+    ASSERT_TRUE(cli >= 0);
+    uint16_t cli_port = sock_local_port(cli);
+    ASSERT_TRUE(cli_port != 0);
+
+    const char *req = "PING";
+    ASSERT_EQ_INT(4, (int)udp_sendto(cli, "127.0.0.1", srv_port, req, 4));
+
+    /* 服务端收下并解析发送方地址 */
+    char buf[16] = {0};
+    char from_host[32] = {0};
+    uint16_t from_port = 0;
+    ssize_t n = udp_recvfrom_from(srv, buf, sizeof(buf), from_host, sizeof(from_host), &from_port);
+    ASSERT_EQ_INT(4, (int)n);
+    ASSERT_EQ_MEM(req, buf, 4);
+    ASSERT_EQ_INT((int)cli_port, (int)from_port);   /* 发送方端口正确 */
+
+    /* 原样回发到发送方 */
+    ASSERT_EQ_INT(4, (int)udp_sendto(srv, from_host, from_port, buf, 4));
+    char reply[16] = {0};
+    ASSERT_EQ_INT(4, (int)udp_recvfrom(cli, reply, sizeof(reply)));
+    ASSERT_EQ_MEM(req, reply, 4);
+
+    sock_close(cli);
+    sock_close(srv);
+    return 0;
+}
+
 /* ---- 错误路径 ---- */
 
 static int test_error_paths(void) {
@@ -152,6 +242,7 @@ static int test_error_paths(void) {
     ASSERT_TRUE(fd < 0);
 
     ASSERT_EQ_INT(0, (int)sock_local_port(-1));
+    ASSERT_EQ_INT(0, (int)sock_peer_port(-1));
     sock_close(-1);  /* 不应崩溃 */
     return 0;
 }
@@ -159,8 +250,10 @@ static int test_error_paths(void) {
 int main(void) {
     TEST_BEGIN();
     RUN_TEST(test_tcp_echo);
+    RUN_TEST(test_tcp_multi_client);
     RUN_TEST(test_tcp_big_transfer);
     RUN_TEST(test_udp_sendrecv);
+    RUN_TEST(test_udp_echo);
     RUN_TEST(test_error_paths);
     TEST_END();
 }

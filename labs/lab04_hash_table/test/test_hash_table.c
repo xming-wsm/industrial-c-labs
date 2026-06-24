@@ -42,9 +42,12 @@ static int test_null_safe(void) {
     uint16_t v = 0;
     ASSERT_EQ_SIZE(0u, ht_count(NULL));
     ASSERT_EQ_SIZE(0u, ht_capacity(NULL));
+    ASSERT_EQ_SIZE(0u, ht_available(NULL));
     ASSERT_EQ_INT(HT_ERR_NULL, ht_put(NULL, "a", 1));
     ASSERT_EQ_INT(HT_ERR_NULL, ht_get(NULL, "a", &v));
     ASSERT_EQ_INT(HT_ERR_NULL, ht_remove(NULL, "a"));
+    ASSERT_EQ_INT(7, (int)ht_get_or_default(NULL, "a", 7)); /* NULL 返回默认 */
+    ht_for_each(NULL, NULL, NULL);                          /* 不应崩溃 */
     ht_reset(NULL);
     return 0;
 }
@@ -82,6 +85,86 @@ static int test_update_existing(void) {
     uint16_t v = 0;
     ASSERT_EQ_INT(HT_OK, ht_get(&ht, "k", &v));
     ASSERT_EQ_INT(999, v);
+    return 0;
+}
+
+/* ---- available：随插入/删除变化 ---- */
+
+static int test_available(void) {
+    ht_entry_t *buckets[8];
+    ht_entry_t pool[4];
+    hash_table_t ht;
+    ht_init(&ht, buckets, 8, pool, 4);
+    ASSERT_EQ_SIZE(4u, ht_available(&ht));
+    ht_put(&ht, "a", 1);
+    ht_put(&ht, "b", 2);
+    ASSERT_EQ_SIZE(2u, ht_available(&ht));
+    ht_put(&ht, "a", 11);                /* 更新不消耗槽位 */
+    ASSERT_EQ_SIZE(2u, ht_available(&ht));
+    ht_remove(&ht, "a");
+    ASSERT_EQ_SIZE(3u, ht_available(&ht));
+    return 0;
+}
+
+/* ---- get_or_default ---- */
+
+static int test_get_or_default(void) {
+    ht_entry_t *buckets[8];
+    ht_entry_t pool[8];
+    hash_table_t ht;
+    ht_init(&ht, buckets, 8, pool, 8);
+    ht_put(&ht, "exists", 42);
+
+    ASSERT_EQ_INT(42, (int)ht_get_or_default(&ht, "exists", 999));
+    ASSERT_EQ_INT(999, (int)ht_get_or_default(&ht, "missing", 999));
+    return 0;
+}
+
+/* ---- for_each：遍历到所有条目（顺序不保证） ---- */
+
+struct ht_collect {
+    size_t   n;
+    uint32_t value_sum;
+};
+
+static void ht_collect_cb(const char *key, uint16_t value, void *ctx) {
+    struct ht_collect *c = (struct ht_collect *)ctx;
+    (void)key;
+    c->n++;
+    c->value_sum += value;
+}
+
+static int test_for_each(void) {
+    ht_entry_t *buckets[2];   /* 小桶制造冲突，确保跨链遍历 */
+    ht_entry_t pool[8];
+    hash_table_t ht;
+    ht_init(&ht, buckets, 2, pool, 8);
+    ht_put(&ht, "a", 10);
+    ht_put(&ht, "bb", 20);
+    ht_put(&ht, "ccc", 30);
+    ht_put(&ht, "dddd", 40);
+
+    struct ht_collect c = {0, 0};
+    ht_for_each(&ht, ht_collect_cb, &c);
+    ASSERT_EQ_SIZE(4u, c.n);             /* 每条恰好访问一次 */
+    ASSERT_EQ_INT(100, (int)c.value_sum); /* 10+20+30+40 */
+    return 0;
+}
+
+/* ---- 超长键：截断到 HT_KEY_MAX-1，仍可用同串读回 ---- */
+
+static int test_long_key(void) {
+    ht_entry_t *buckets[8];
+    ht_entry_t pool[8];
+    hash_table_t ht;
+    ht_init(&ht, buckets, 8, pool, 8);
+
+    /* 远超 HT_KEY_MAX 的键 */
+    const char *longk = "this_is_a_very_long_parameter_name_exceeding_limit";
+    ASSERT_EQ_INT(HT_OK, ht_put(&ht, longk, 0x1234));
+    uint16_t v = 0;
+    ASSERT_EQ_INT(HT_OK, ht_get(&ht, longk, &v));
+    ASSERT_EQ_INT(0x1234, v);
     return 0;
 }
 
@@ -157,6 +240,39 @@ static int test_reset(void) {
     return 0;
 }
 
+/* ---- 压力：反复 put/remove，验证池不泄漏 ---- */
+
+static int test_stress_put_remove(void) {
+    ht_entry_t *buckets[8];
+    ht_entry_t pool[16];
+    hash_table_t ht;
+    ht_init(&ht, buckets, 8, pool, 16);
+
+    char key[8];
+    for (int round = 0; round < 100; round++) {
+        for (int i = 0; i < 16; i++) {
+            key[0] = 'k';
+            key[1] = (char)('0' + i / 10);
+            key[2] = (char)('0' + i % 10);
+            key[3] = '\0';
+            ASSERT_EQ_INT(HT_OK, ht_put(&ht, key, (uint16_t)(round + i)));
+        }
+        ASSERT_EQ_SIZE(16u, ht_count(&ht));
+        ASSERT_EQ_INT(HT_ERR_FULL, ht_put(&ht, "overflow", 0));
+
+        for (int i = 0; i < 16; i++) {
+            key[0] = 'k';
+            key[1] = (char)('0' + i / 10);
+            key[2] = (char)('0' + i % 10);
+            key[3] = '\0';
+            ASSERT_EQ_INT(HT_OK, ht_remove(&ht, key));
+        }
+        ASSERT_EQ_SIZE(0u, ht_count(&ht));
+        ASSERT_EQ_SIZE(16u, ht_available(&ht));
+    }
+    return 0;
+}
+
 int main(void) {
     TEST_BEGIN();
     RUN_TEST(test_init_basic);
@@ -165,9 +281,14 @@ int main(void) {
     RUN_TEST(test_null_safe);
     RUN_TEST(test_put_get);
     RUN_TEST(test_update_existing);
+    RUN_TEST(test_available);
+    RUN_TEST(test_get_or_default);
     RUN_TEST(test_collisions);
+    RUN_TEST(test_for_each);
+    RUN_TEST(test_long_key);
     RUN_TEST(test_remove);
     RUN_TEST(test_remove_recycles);
     RUN_TEST(test_reset);
+    RUN_TEST(test_stress_put_remove);
     TEST_END();
 }

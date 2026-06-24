@@ -88,6 +88,10 @@ static int test_init_null(void) {
     ASSERT_EQ_INT(FSM_ERR_NULL, fsm_init(&fsm, kCycleTable, 0, ST_IDLE, NULL));
     ASSERT_EQ_INT(-1, fsm_state(NULL));
     ASSERT_EQ_INT(FSM_ERR_NULL, fsm_dispatch(NULL, EV_START));
+    ASSERT_EQ_INT(FSM_ERR_NULL, fsm_reset(NULL, ST_IDLE));
+    ASSERT_FALSE(fsm_can_dispatch(NULL, EV_START));
+    ASSERT_EQ_INT(FSM_ERR_NULL, fsm_peek_next(NULL, EV_START, NULL));
+    ASSERT_EQ_SIZE(0u, fsm_transition_count(NULL));
     return 0;
 }
 
@@ -108,6 +112,53 @@ static int test_full_cycle(void) {
     /* 顶出完成的 action 触发了一次"周期完成" */
     ASSERT_EQ_INT(1, ctx.cycle_done);
     ASSERT_EQ_INT(0, ctx.estop_count);
+    /* 一个完整周期 = 8 次成功转移 */
+    ASSERT_EQ_SIZE(8u, fsm_transition_count(&fsm));
+    return 0;
+}
+
+/* ---- can_dispatch / peek_next：不改变状态的查询 ---- */
+
+static int test_peek_and_can(void) {
+    fsm_t fsm;
+    cycle_ctx_t ctx = {0, 0};
+    fsm_init(&fsm, kCycleTable, kCycleLen, ST_IDLE, &ctx);
+
+    /* 空闲态：START 有转移，INJECT_DONE 没有 */
+    ASSERT_TRUE(fsm_can_dispatch(&fsm, EV_START));
+    ASSERT_FALSE(fsm_can_dispatch(&fsm, EV_INJECT_DONE));
+
+    int next = -1;
+    ASSERT_EQ_INT(FSM_OK, fsm_peek_next(&fsm, EV_START, &next));
+    ASSERT_EQ_INT(ST_CLAMP, next);
+    /* peek 不改变状态、不计数、不触发动作 */
+    ASSERT_EQ_INT(ST_IDLE, fsm_state(&fsm));
+    ASSERT_EQ_SIZE(0u, fsm_transition_count(&fsm));
+
+    ASSERT_EQ_INT(FSM_NO_TRANSITION, fsm_peek_next(&fsm, EV_HOLD_DONE, &next));
+    ASSERT_EQ_INT(FSM_OK, fsm_peek_next(&fsm, EV_START, NULL)); /* out 可为 NULL */
+    return 0;
+}
+
+/* ---- reset：中途回到初始态并清零计数 ---- */
+
+static int test_reset_midcycle(void) {
+    fsm_t fsm;
+    cycle_ctx_t ctx = {0, 0};
+    fsm_init(&fsm, kCycleTable, kCycleLen, ST_IDLE, &ctx);
+
+    fsm_dispatch(&fsm, EV_START);
+    fsm_dispatch(&fsm, EV_CLAMP_DONE);
+    ASSERT_EQ_INT(ST_INJECT, fsm_state(&fsm));
+    ASSERT_EQ_SIZE(2u, fsm_transition_count(&fsm));
+
+    ASSERT_EQ_INT(FSM_OK, fsm_reset(&fsm, ST_IDLE));
+    ASSERT_EQ_INT(ST_IDLE, fsm_state(&fsm));
+    ASSERT_EQ_SIZE(0u, fsm_transition_count(&fsm));   /* 计数清零 */
+
+    /* reset 后仍可正常运行 */
+    ASSERT_EQ_INT(FSM_OK, fsm_dispatch(&fsm, EV_START));
+    ASSERT_EQ_INT(ST_CLAMP, fsm_state(&fsm));
     return 0;
 }
 
@@ -170,6 +221,8 @@ int main(void) {
     RUN_TEST(test_init_basic);
     RUN_TEST(test_init_null);
     RUN_TEST(test_full_cycle);
+    RUN_TEST(test_peek_and_can);
+    RUN_TEST(test_reset_midcycle);
     RUN_TEST(test_no_transition_ignored);
     RUN_TEST(test_estop_and_reset);
     RUN_TEST(test_two_cycles);

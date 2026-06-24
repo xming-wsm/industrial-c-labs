@@ -22,6 +22,8 @@
  *                      应答 [FC][字节数][寄存器值 hi,lo ...]
  *   0x06 写单个寄存器：请求 [FC][地址 hi,lo][值 hi,lo]
  *                      应答 原样回显 [FC][地址][值]
+ *   0x10 写多个寄存器：请求 [FC][起始地址 hi,lo][数量 hi,lo][字节数][值 hi,lo ...]
+ *                      应答 [FC][起始地址 hi,lo][数量 hi,lo]
  * 异常应答：[FC|0x80][异常码]
  */
 #ifndef LAB11_MODBUS_SLAVE_H
@@ -37,6 +39,7 @@ extern "C" {
 /** 功能码。 */
 #define MB_FC_READ_HOLDING   0x03
 #define MB_FC_WRITE_SINGLE   0x06
+#define MB_FC_WRITE_MULTIPLE 0x10
 
 /** 异常码。 */
 #define MB_EX_ILLEGAL_FUNCTION  0x01
@@ -46,10 +49,15 @@ extern "C" {
 /** 单次读保持寄存器的最大数量（Modbus 规范）。 */
 #define MB_MAX_READ_REGS  125
 
-/** 从站控制块：持有一组保持寄存器。 */
+/** 单次写多个寄存器的最大数量（Modbus 规范，0x10）。 */
+#define MB_MAX_WRITE_REGS 123
+
+/** 从站控制块：持有一组保持寄存器，并统计请求/异常计数。 */
 typedef struct {
-    uint16_t *regs;     /**< 保持寄存器数组（调用者提供） */
-    size_t    nregs;    /**< 寄存器个数                   */
+    uint16_t *regs;             /**< 保持寄存器数组（调用者提供）       */
+    size_t    nregs;            /**< 寄存器个数                         */
+    uint32_t  request_count;    /**< 成功产生应答的请求数（含异常应答） */
+    uint32_t  exception_count;  /**< 其中产生异常应答的次数             */
 } modbus_slave_t;
 
 /**
@@ -63,6 +71,15 @@ int mb_set_register(modbus_slave_t *mb, uint16_t addr, uint16_t value);
 
 /** 直接读一个寄存器（测试/本地用）。@return 0；地址越界或 mb/out NULL -> -1。 */
 int mb_get_register(const modbus_slave_t *mb, uint16_t addr, uint16_t *out);
+
+/** @return 寄存器总数；mb 为 NULL 时返回 0。 */
+size_t mb_register_count(const modbus_slave_t *mb);
+
+/** @return 累计产生应答的请求数（含异常应答）；mb 为 NULL 时返回 0。 */
+uint32_t mb_request_count(const modbus_slave_t *mb);
+
+/** @return 累计产生异常应答的次数；mb 为 NULL 时返回 0。 */
+uint32_t mb_exception_count(const modbus_slave_t *mb);
 
 /**
  * 处理一帧请求 ADU，生成一帧应答 ADU。
